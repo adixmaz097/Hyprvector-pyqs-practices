@@ -540,12 +540,12 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-1.5 sm:gap-2">
-                  PYQS Practices
+                  PYQS
                   <span className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-medium">
                     RRB CBT
                   </span>
                 </h1>
-                <p className="text-[10px] sm:text-xs text-slate-400">90-Minute Mock Engine</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">Engine</p>
               </div>
             </div>
 
@@ -698,7 +698,7 @@ export default function App() {
                       {currentManageSet.questions.length} Qs
                     </span>
                   </h2>
-                  <p className="text-[11px] text-slate-400">Manage questions and diagrams for this paper set</p>
+                  <p className="text-[11px] text-slate-400">Manage</p>
                 </div>
               </div>
 
