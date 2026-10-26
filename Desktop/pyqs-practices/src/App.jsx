@@ -4,7 +4,8 @@ import {
   XCircle, AlertCircle, Clock, BookOpen, Award, ArrowLeft, 
   ArrowRight, Save, Eye, RefreshCw, HelpCircle, FileText, 
   Check, X, Image as ImageIcon, ChevronRight, BarChart2,
-  Settings, User, ShieldCheck, Flame, RotateCcw, LayoutGrid
+  Settings, User, ShieldCheck, Flame, RotateCcw, LayoutGrid,
+  Languages, Loader2
 } from 'lucide-react';
 
 // --- INITIAL SAMPLE DATA ---
@@ -92,6 +93,18 @@ const INITIAL_SETS = [
   }
 ];
 
+// Lightweight Translator
+async function translateOnline(text) {
+  if (!text || !text.trim()) return text;
+  try {
+    const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=hi&dt=t&q=${encodeURIComponent(text)}`);
+    const data = await res.json();
+    return data?.[0] ? data[0].map(item => item[0]).join('') : text;
+  } catch {
+    return text;
+  }
+}
+
 export default function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [paperSets, setPaperSets] = useState(() => {
@@ -115,6 +128,11 @@ export default function App() {
   const [selectedSectionFilter, setSelectedSectionFilter] = useState('ALL');
   const [lastExamResult, setLastExamResult] = useState(null);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
+
+  // Translation State (UI Preserved)
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translations, setTranslations] = useState({});
+  const [showHindi, setShowHindi] = useState(false);
 
   // Create/Edit Set Modal
   const [showSetModal, setShowSetModal] = useState(false);
@@ -202,6 +220,8 @@ export default function App() {
     setCurrentQuestionIndex(0);
     setUserAnswers({});
     setShowMobilePalette(false);
+    setShowHindi(false);
+    setTranslations({});
     
     const initialStatus = {};
     selectedSet.questions.forEach((q, idx) => {
@@ -259,6 +279,43 @@ export default function App() {
   };
 
   const currentQ = selectedSet?.questions[currentQuestionIndex];
+
+  // Language switcher
+  const handleToggleTranslate = async () => {
+    if (!currentQ) return;
+    if (showHindi) {
+      setShowHindi(false);
+      return;
+    }
+
+    if (translations[currentQ.id]) {
+      setShowHindi(true);
+      return;
+    }
+
+    setIsTranslating(true);
+    try {
+      const qTextHindi = await translateOnline(currentQ.text);
+      const optsHindi = await Promise.all(
+        currentQ.options.map(async (o) => ({
+          ...o,
+          text: await translateOnline(o.text)
+        }))
+      );
+      setTranslations(prev => ({
+        ...prev,
+        [currentQ.id]: { text: qTextHindi, options: optsHindi }
+      }));
+      setShowHindi(true);
+    } catch {
+      // Fallback
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const activeQuestionText = (showHindi && translations[currentQ?.id]) ? translations[currentQ.id].text : currentQ?.text;
+  const activeOptions = (showHindi && translations[currentQ?.id]) ? translations[currentQ.id].options : currentQ?.options;
 
   const handleSelectOption = (key) => {
     if (!currentQ) return;
@@ -540,12 +597,12 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-1.5 sm:gap-2">
-                  PYQS
+                  PYQS Practices
                   <span className="hidden sm:inline-block text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-medium">
                     RRB CBT
                   </span>
                 </h1>
-                <p className="text-[10px] sm:text-xs text-slate-400">Engine</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">90-Minute Mock Engine</p>
               </div>
             </div>
 
@@ -698,7 +755,7 @@ export default function App() {
                       {currentManageSet.questions.length} Qs
                     </span>
                   </h2>
-                  <p className="text-[11px] text-slate-400">Manage</p>
+                  <p className="text-[11px] text-slate-400">Manage questions and diagrams for this paper set</p>
                 </div>
               </div>
 
@@ -803,7 +860,7 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW C: CBT TEST SCREEN (FULLY RESPONSIVE MOBILE & DESKTOP) */}
+        {/* VIEW C: CBT TEST SCREEN (ORIGINAL CLEAN UI PRESERVED) */}
         {currentView === 'test_screen' && selectedSet && currentQ && (
           <div className="flex-1 flex flex-col h-[100dvh] overflow-hidden bg-slate-900 select-none">
             
@@ -821,8 +878,27 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Timer + Mobile Palette Button */}
+              {/* Timer + Clean Language Button + Mobile Palette */}
               <div className="flex items-center gap-2 sm:gap-4">
+                {/* Minimalist Language Switch Button */}
+                <button
+                  disabled={isTranslating}
+                  onClick={handleToggleTranslate}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-semibold transition ${
+                    showHindi 
+                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-300' 
+                      : 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300'
+                  }`}
+                  title="Toggle Hindi translation"
+                >
+                  {isTranslating ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                  ) : (
+                    <Languages className="w-3.5 h-3.5 text-blue-400" />
+                  )}
+                  <span>{showHindi ? 'ENG' : 'हिंदी'}</span>
+                </button>
+
                 <div className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-lg border font-mono font-bold tracking-wider ${
                   timeLeftSeconds < 300 
                     ? 'bg-rose-950/80 border-rose-600 text-rose-300 animate-pulse' 
@@ -890,7 +966,7 @@ export default function App() {
                   {/* Question Text */}
                   <div className="mt-3">
                     <p className="text-sm sm:text-base text-slate-100 font-medium leading-relaxed whitespace-pre-line">
-                      {currentQ.text}
+                      {activeQuestionText}
                     </p>
 
                     {currentQ.imageUrl && (
@@ -906,7 +982,7 @@ export default function App() {
 
                   {/* Options */}
                   <div className="mt-4 sm:mt-6 space-y-2.5 max-w-3xl">
-                    {currentQ.options.map((opt) => {
+                    {activeOptions.map((opt) => {
                       const isSelected = userAnswers[currentQ.id] === opt.key;
                       return (
                         <label
@@ -942,7 +1018,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Bottom Navigation Buttons (Mobile Optimized) */}
+                {/* Bottom Navigation Buttons */}
                 <div className="mt-6 pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2.5 shrink-0 bg-slate-900 pb-2">
                   <div className="flex items-center justify-between w-full sm:w-auto gap-2">
                     <button
@@ -978,7 +1054,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Palette (Desktop Sidebar OR Mobile Slide-in Drawer) */}
+              {/* Palette */}
               <aside className={`
                 fixed inset-y-0 right-0 z-40 w-72 bg-slate-950 border-l border-slate-800 p-4 flex flex-col justify-between transition-transform duration-200 ease-in-out
                 lg:static lg:w-80 lg:translate-x-0
